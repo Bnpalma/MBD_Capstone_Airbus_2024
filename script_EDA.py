@@ -17,21 +17,18 @@ import matplotlib.pyplot as plt
 #     df = df[df['FLIGHT_PHASE_COUNT'] == 8]
 #     return df
 
-def phase8(df):
-    # Crear un DataFrame para almacenar las duraciones de los vuelos
+def longer_than_1_hour(df):
     df = df.reset_index()
     flight_durations = df.groupby('Flight')['UTC_TIME'].agg(['min', 'max'])
     flight_durations['duration'] = (flight_durations['max'] - flight_durations['min']).dt.total_seconds()
-    
-    # Filtrar vuelos con duración mayor a 3600 segundos (1 hora)
     long_flights = flight_durations[flight_durations['duration'] >= 3600].index
+    df = df[df['Flight'].isin(long_flights)].set_index('UTC_TIME')
 
-    # Filtrar el DataFrame original para mantener solo los vuelos largos
-    df = df[df['Flight'].isin(long_flights)]
+    return df
 
-    # Filtrar por fase de vuelo 8
+def phase8(df):
+    # Filter for FLIGHT_PHASE_COUNT = 8
     df = df[df['FLIGHT_PHASE_COUNT'] == 8]
-    df.set_index('UTC_TIME', inplace=True)
     return df
 
 
@@ -83,4 +80,18 @@ def remove_outliers(df):
 def moving_average(df, column, window_size):
     return df.groupby('Flight')[column].transform(lambda x: x.rolling(window=window_size, min_periods=1, center=True).mean())
 
+def additional_features(df):
+    # Calculate the total fuel used for each flight
+    df['TOTAL_FUEL_USED'] = df['FUEL_USED_1'] + df['FUEL_USED_2'] + df['FUEL_USED_3'] + df['FUEL_USED_4']
+    
+    # Calculate the total fuel loaded for each flight
+    df['FUEL_LOADED_FOB'] = df.groupby(['Flight'])['VALUE_FOB'].transform('max')
+
+    # The expected FOB at any point in time is the FOB at the beginning of the flight minus the total fuel used up to that point
+    df['VALUE_FOB_EXPECTED'] = df['FUEL_LOADED_FOB'] - df['TOTAL_FUEL_USED'] 
+
+    # The difference between the expected FOB and the actual FOB
+    df['VALUE_FOB_DIFF'] = df['VALUE_FOB_EXPECTED'] -  df['VALUE_FOB'] # Potential fuel leak 
+    
+    return df
 #Funcion 
