@@ -8,6 +8,9 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import seaborn as sns
+import plotly.graph_objects as go
+import plotly.subplots as sp
 
 #Funcion que descarta todo lo que no sea FLIGHT_PHASE_COUNT = 8 o si el vuelo dura menos de una hora
 # def phase8(df):
@@ -82,7 +85,7 @@ def moving_average(df, column, window_size):
 
 def additional_features(df):
     # Calculate the total fuel used for each flight
-    df['TOTAL_FUEL_USED'] = df['FUEL_USED_1'] + df['FUEL_USED_2'] + df['FUEL_USED_3'] + df['FUEL_USED_4']
+    df['TOTAL_FUEL_USED'] = df.apply(calculate_total_fuel_used, axis=1)
     
     # Calculate the total fuel loaded for each flight
     df['FUEL_LOADED_FOB'] = df.groupby(['Flight'])['VALUE_FOB'].transform('max')
@@ -94,4 +97,79 @@ def additional_features(df):
     df['VALUE_FOB_DIFF'] = df['VALUE_FOB_EXPECTED'] -  df['VALUE_FOB'] # Potential fuel leak 
     
     return df
-#Funcion 
+
+
+
+def plot_flights(df, random=False, flight=None):
+    """
+    Plots VALUE_FOB, VALUE_FOB_EXPECTED, and VALUE_FOB_DIFF for the flights in the dataframe.
+
+    Args:
+    df (pd.DataFrame): Dataframe containing flight data.
+    random (bool): If True, plot 5 random flights. Default is False.
+    flight (str or None): Specific flight to plot. If provided, only this flight will be plotted.
+
+    Returns:
+    None: Displays the plot.
+    """
+    if flight:
+        flights = [flight]
+    else:
+        if random:
+            flights = df['Flight'].sample(5).unique()
+        else:
+            flights = df['Flight'].unique()[:5]
+
+    # Create a plotly subplots figure
+    fig = sp.make_subplots(rows=len(flights), cols=1, shared_xaxes=False,
+                           subplot_titles=[f'Flight {flight}' for flight in flights],
+                           specs=[[{"secondary_y": True}] for _ in flights])
+
+    for i, flight in enumerate(flights, start=1):
+        df_flight = df[df['Flight'] == flight]
+        max_diff = df_flight['VALUE_FOB_DIFF'].abs().max()
+        # Add VALUE_FOB trace
+        fig.add_trace(go.Scatter(
+            x=df_flight.index,
+            y=df_flight['VALUE_FOB'],
+            mode='lines',
+            name=f'Flight {flight} VALUE_FOB'
+        ), row=i, col=1)
+        # Add VALUE_FOB_EXPECTED trace
+        fig.add_trace(go.Scatter(
+            x=df_flight.index,
+            y=df_flight['VALUE_FOB_EXPECTED'],
+            mode='lines',
+            name=f'Flight {flight} VALUE_FOB_EXPECTED'
+        ), row=i, col=1)
+        # Add VALUE_FOB_DIFF trace as secondary y-axis
+        fig.add_trace(go.Scatter(
+            x=df_flight.index,
+            y=df_flight['VALUE_FOB_DIFF'],
+            mode='lines',
+            name=f'Flight {flight} VALUE_FOB_DIFF',
+            line=dict(dash='dot')
+        ), row=i, col=1, secondary_y=True)
+
+        # Update secondary y-axis to center zero
+        fig.update_yaxes(range=[-max_diff, max_diff], row=i, col=1, secondary_y=True, zeroline=True, zerolinewidth=2)
+
+    # Update layout of the figure
+    fig.update_layout(
+        title='VALUE_FOB, VALUE_FOB_EXPECTED, and VALUE_FOB_DIFF for Flights',
+        height=400 * len(flights)  # Adjust height based on number of flights
+    )
+
+    # Update y-axes titles
+    for i in range(1, len(flights) + 1):
+        fig.update_yaxes(title_text="VALUE_FOB / VALUE_FOB_EXPECTED", row=i, col=1, secondary_y=False)
+        fig.update_yaxes(title_text="VALUE_FOB_DIFF", row=i, col=1, secondary_y=True)
+
+    # Display the plot
+    fig.show()
+# Example usage (assuming df is your dataframe):
+# plot_flights(df, random=True)
+
+
+# Example usage (assuming df is your dataframe):
+# plot_flights(df, random=True)
