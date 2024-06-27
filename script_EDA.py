@@ -170,6 +170,20 @@ def plot_flights(df, random=False, flight=None):
 # Example usage (assuming df is your dataframe):
 # plot_flights(df, random=True)
 
+def outliers_to_nan(df, column):
+    # detect outliers with IQR
+    q1 = df[column].quantile(0.25)
+    q3 = df[column].quantile(0.75)
+    iqr = q3 - q1
+    lower_bound = q1 - 10 * iqr
+    upper_bound = q3 + 10 * iqr
+    df[column] = df[column].apply(lambda x: np.nan if x < lower_bound or x > upper_bound else x)
+    
+    # # detect outliers with Z-score
+    # z = np.abs((df[column] - df[column].mean()) / df[column].std())
+    # df[column] = df[column].mask(z > 3)
+    
+    return df
 
 # Example usage (assuming df is your dataframe):
 # plot_flights(df, random=True)
