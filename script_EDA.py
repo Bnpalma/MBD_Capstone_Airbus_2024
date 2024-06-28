@@ -35,12 +35,12 @@ def phase8(df):
     return df
 
 
-#Handling NaN's for FUEL_USED_1, FUEL_USED_2, FUEL_USED_3, FUEL_USED_4
-def calculate_total_fuel_used(row):
-    if any(pd.isna([row['FUEL_USED_1'], row['FUEL_USED_2'], row['FUEL_USED_3'], row['FUEL_USED_4']])):
-        return np.nan
-    else:
-        return row['FUEL_USED_1'] + row['FUEL_USED_2'] + row['FUEL_USED_3'] + row['FUEL_USED_4']
+# #Handling NaN's for FUEL_USED_1, FUEL_USED_2, FUEL_USED_3, FUEL_USED_4
+# def calculate_total_fuel_used(row):
+#     if any(pd.isna([row['FUEL_USED_1'], row['FUEL_USED_2'], row['FUEL_USED_3'], row['FUEL_USED_4']])):
+#         return np.nan
+#     else:
+#         return row['FUEL_USED_1'] + row['FUEL_USED_2'] + row['FUEL_USED_3'] + row['FUEL_USED_4']
     
 
 # Getting the summary of NaN's for each column
@@ -85,7 +85,7 @@ def moving_average(df, column, window_size):
 
 def additional_features(df):
     # Calculate the total fuel used for each flight
-    df['TOTAL_FUEL_USED'] = df.apply(calculate_total_fuel_used, axis=1)
+    df['TOTAL_FUEL_USED'] = df['FUEL_USED_1'] + df['FUEL_USED_2'] + df['FUEL_USED_3'] + df['FUEL_USED_4']
     
     # Calculate the total fuel loaded for each flight
     df['FUEL_LOADED_FOB'] = df.groupby(['Flight'])['VALUE_FOB'].transform('max')
@@ -187,3 +187,142 @@ def outliers_to_nan(df, column):
 
 # Example usage (assuming df is your dataframe):
 # plot_flights(df, random=True)
+
+
+
+############################################################################################################
+# from sklearn.linear_model import LinearRegression
+# def filter_complete_flights(df):
+#     """
+#     Filters the flights with no missing values in the TOTAL_FUEL_USED column.
+    
+#     Parameters:
+#     df (pd.DataFrame): The dataframe containing the flight data.
+    
+#     Returns:
+#     pd.DataFrame: A dataframe with only the flights that have no missing TOTAL_FUEL_USED values.
+#     """
+#     # Group by 'Flight' and filter out the groups with any NaN in 'TOTAL_FUEL_USED'
+#     complete_flights = df.groupby('Flight').filter(lambda x: x['TOTAL_FUEL_USED'].notna().all())
+#     return complete_flights
+
+
+# def calculate_average_slope(df):
+#     """
+#     Calculates the average slope of linear regressions for each complete flight.
+    
+#     Parameters:
+#     df (pd.DataFrame): The dataframe containing the complete flight data.
+    
+#     Returns:
+#     float: The average slope of the linear regressions.
+#     """
+#     slopes = []
+    
+#     # Group by 'Flight'
+#     for flight, group in df.groupby('Flight'):
+#         X = np.array(group.index).reshape(-1, 1)  # Using index as the time variable
+#         y = group['TOTAL_FUEL_USED'].values
+#         model = LinearRegression()
+#         model.fit(X, y)
+#         slopes.append(model.coef_[0])
+    
+#     average_slope = np.mean(slopes)
+#     return average_slope
+
+
+# def interpolate_missing_values(df, average_slope):
+#     """
+#     Interpolates missing values in the TOTAL_FUEL_USED column using the average slope.
+    
+#     Parameters:
+#     df (pd.DataFrame): The dataframe containing the flight data.
+#     average_slope (float): The average slope calculated from complete flights.
+    
+#     Returns:
+#     pd.DataFrame: The dataframe with interpolated TOTAL_FUEL_USED values.
+#     """
+#     def interpolate_group(group):
+#         last_valid_idx = group['TOTAL_FUEL_USED'].last_valid_index()
+#         next_valid_idx = group['TOTAL_FUEL_USED'].first_valid_index()
+        
+#         if pd.isna(group['TOTAL_FUEL_USED']).any():
+#             # Interpolating forward
+#             for i in range(last_valid_idx + 1, len(group)):
+#                 if pd.notna(group.at[i, 'TOTAL_FUEL_USED']):
+#                     break
+#                 group.at[i, 'TOTAL_FUEL_USED'] = group.at[last_valid_idx, 'TOTAL_FUEL_USED'] + average_slope * (i - last_valid_idx)
+            
+#             # Interpolating backward
+#             for i in range(next_valid_idx - 1, -1, -1):
+#                 if pd.notna(group.at[i, 'TOTAL_FUEL_USED']):
+#                     break
+#                 group.at[i, 'TOTAL_FUEL_USED'] = group.at[next_valid_idx, 'TOTAL_FUEL_USED'] - average_slope * (next_valid_idx - i)
+        
+#         return group
+    
+#     # Apply the interpolation function to each group
+#     df = df.groupby('Flight').apply(interpolate_group)
+#     return df
+
+# def interpolate_missing_values(df, average_slope):
+#     """
+#     Interpolates missing values in the TOTAL_FUEL_USED column using the average slope.
+    
+#     Parameters:
+#     df (pd.DataFrame): The dataframe containing the flight data.
+#     average_slope (float): The average slope calculated from complete flights.
+    
+#     Returns:
+#     pd.DataFrame: The dataframe with interpolated TOTAL_FUEL_USED values.
+#     """
+#     def interpolate_group(group):
+#         last_valid_idx = group['TOTAL_FUEL_USED'].last_valid_index()
+#         next_valid_idx = group['TOTAL_FUEL_USED'].first_valid_index()
+        
+#         if pd.isna(group['TOTAL_FUEL_USED']).any():
+#             # Interpolating forward
+#             for i in range(last_valid_idx + 1, len(group)):
+#                 if pd.notna(group.at[i, 'TOTAL_FUEL_USED']):
+#                     break
+#                 group.at[i, 'TOTAL_FUEL_USED'] = group.at[last_valid_idx, 'TOTAL_FUEL_USED'] + average_slope * (i - last_valid_idx)
+            
+#             # Interpolating backward
+#             for i in range(next_valid_idx - 1, -1, -1):
+#                 if pd.notna(group.at[i, 'TOTAL_FUEL_USED']):
+#                     break
+#                 group.at[i, 'TOTAL_FUEL_USED'] = group.at[next_valid_idx, 'TOTAL_FUEL_USED'] - average_slope * (next_valid_idx - i)
+        
+#         return group
+    
+#     # Apply the interpolation function to each group
+#     df = df.groupby('Flight').apply(interpolate_group)
+#     return df
+
+
+
+# def process_flight_data(df):
+#     """
+#     Processes the flight data to filter complete flights, calculate the average slope, and interpolate missing values.
+    
+#     Parameters:
+#     df (pd.DataFrame): The dataframe containing the flight data.
+    
+#     Returns:
+#     pd.DataFrame: The dataframe with interpolated TOTAL_FUEL_USED values.
+#     """
+#     # Step 1: Filter complete flights
+#     complete_flights = filter_complete_flights(df)
+    
+#     # Step 2: Calculate average slope
+#     average_slope = calculate_average_slope(complete_flights)
+    
+#     # Step 3: Interpolate missing values
+#     interpolated_df = interpolate_missing_values(df, average_slope)
+    
+#     return interpolated_df
+
+
+def interpolate_group(group):
+    # Interpolate only inside the group
+    return group.interpolate(method='linear', limit_area='inside')
