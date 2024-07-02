@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import plotly.graph_objects as go
 import plotly.subplots as sp
+from scipy.stats import zscore
 
 #Funcion que descarta todo lo que no sea FLIGHT_PHASE_COUNT = 8 o si el vuelo dura menos de una hora
 # def phase8(df):
@@ -68,7 +69,7 @@ def get_nan_summary(df):
 
 #Funcion borra los vuelos con VALUE_FOB y TOTAL_USED con un 50% de nulos o mas
 def has_50_percent_or_more_nans(group, col):
-    return group[col].isna().sum() >= 0.3 * len(group)
+    return group[col].isna().sum() >= 0.7 * len(group)
 
 # Agrupar por 'Flight' y filtrar vuelos con 50% o más de NaNs en 'VALUE_FOB' o 'TOTL_FUEL_USED'
 def remove_flights(df):
@@ -170,20 +171,20 @@ def plot_flights(df, random=False, flight=None):
 # Example usage (assuming df is your dataframe):
 # plot_flights(df, random=True)
 
-def outliers_to_nan(df, column):
-    # detect outliers with IQR
-    q1 = df[column].quantile(0.25)
-    q3 = df[column].quantile(0.75)
-    iqr = q3 - q1
-    lower_bound = q1 - 10 * iqr
-    upper_bound = q3 + 10 * iqr
-    df[column] = df[column].apply(lambda x: np.nan if x < lower_bound or x > upper_bound else x)
+# def outliers_to_nan(df, column):
+#     # detect outliers with IQR
+#     q1 = df[column].quantile(0.25)
+#     q3 = df[column].quantile(0.75)
+#     iqr = q3 - q1
+#     lower_bound = q1 - 1.5 * iqr
+#     upper_bound = q3 + 1.5 * iqr
+#     df[column] = df[column].apply(lambda x: np.nan if x < lower_bound or x > upper_bound else x)
     
-    # # detect outliers with Z-score
-    # z = np.abs((df[column] - df[column].mean()) / df[column].std())
-    # df[column] = df[column].mask(z > 3)
+#     # # detect outliers with Z-score
+#     # z = np.abs((df[column] - df[column].mean()) / df[column].std())
+#     # df[column] = df[column].mask(z > 3)
     
-    return df
+#     return df
 
 # Example usage (assuming df is your dataframe):
 # plot_flights(df, random=True)
@@ -325,4 +326,58 @@ def outliers_to_nan(df, column):
 
 def interpolate_group(group):
     # Interpolate only inside the group
-    return group.interpolate(method='linear', limit_area='inside')
+    return group.interpolate(method='time', limit_area='inside')
+
+
+
+def mark_outliers(df, column, z_threshold):
+    # Create copies of the DataFrame columns to avoid modifying the original DataFrame
+    df_copy = df.copy()
+    
+    # Calculate the difference for the specified column
+    df_copy[f'{column}_diff'] = df_copy[column].diff().fillna(0) # Fill NaN with 0 for the diff calculation
+    
+    # Calculate the z-score for the specified column
+    df_copy[f'{column}_zscore'] = np.abs(zscore(df_copy[f'{column}_diff']).fillna(0))  # Filling NaN with 0 for z-score calculation
+    
+    outliers = []
+    reset = False
+    
+    for i in range(len(df_copy)):
+        if i == 0:
+            outliers.append(False)
+            continue
+        
+        if reset:
+            outliers.append(True)
+            if df_copy[f'{column}_diff'].iloc[i] != 0:
+                reset = False
+            continue
+        
+        if df_copy[f'{column}_zscore'].iloc[i] > z_threshold:
+            outliers.append(True)
+            reset = True
+        else:
+            outliers.append(False)
+    
+    # Replace outliers with NaNs in the original column
+    df_copy.loc[outliers, column] = np.nan
+    
+    # Optionally, drop the helper columns if they are no longer needed
+    df_copy.drop(columns=[f'{column}_diff', f'{column}_zscore'], inplace=True)
+    
+    return df_copy
+
+
+def apply_outliers_to_flights(df, column, z_threshold):
+    import warnings
+    warnings.filterwarnings("ignore", category=DeprecationWarning) 
+    
+    df_copy = df.copy()
+    # Group by 'Flight' and apply the mark_outliers function to each group
+    df_copy = df.groupby('Flight').apply(lambda group: mark_outliers(group.copy(), column, z_threshold))
+    
+    # Reset index if needed, because groupby may alter it
+    df_copy.reset_index(drop=True, level=0, inplace=True)
+    
+    return df_copy
