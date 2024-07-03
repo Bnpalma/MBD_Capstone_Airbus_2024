@@ -68,12 +68,12 @@ def get_nan_summary(df):
     return summary
 
 #Funcion borra los vuelos con VALUE_FOB y TOTAL_USED con un 50% de nulos o mas
-def has_50_percent_or_more_nans(group, col):
-    return group[col].isna().sum() >= 0.7 * len(group)
+def has_x_percent_or_more_nans(group, col,x = 0.5):
+    return group[col].isna().sum() >= x * len(group)
 
 # Agrupar por 'Flight' y filtrar vuelos con 50% o más de NaNs en 'VALUE_FOB' o 'TOTL_FUEL_USED'
 def remove_flights(df):
-    return df.groupby('Flight').filter(lambda x: not (has_50_percent_or_more_nans(x, 'VALUE_FOB') or has_50_percent_or_more_nans(x, 'TOTAL_FUEL_USED')))
+    return df.groupby('Flight').filter(lambda x: not (has_x_percent_or_more_nans(x, 'VALUE_FOB') or has_x_percent_or_more_nans(x, 'TOTAL_FUEL_USED')))
 
 #Funcion para eliminar outliers
 def remove_outliers(df):
@@ -96,7 +96,7 @@ def additional_features(df):
 
     # The difference between the expected FOB and the actual FOB
     df['VALUE_FOB_DIFF'] = df['VALUE_FOB_EXPECTED'] -  df['VALUE_FOB'] # Potential fuel leak 
-    
+    df['ID'] = df['Flight'].astype(str) + '_' + df['MSN'].astype(str)
     return df
 
 
@@ -355,6 +355,8 @@ def mark_outliers(df, column, z_threshold):
             continue
         
         if df_copy[f'{column}_zscore'].iloc[i] > z_threshold:
+            
+               
             outliers.append(True)
             reset = True
         else:
@@ -381,3 +383,93 @@ def apply_outliers_to_flights(df, column, z_threshold):
     df_copy.reset_index(drop=True, level=0, inplace=True)
     
     return df_copy
+
+
+
+# def mark_outliers(df, column, z_threshold):
+#     # Create copies of the DataFrame columns to avoid modifying the original DataFrame
+#     df_copy = df.copy()
+    
+#     # Calculate the difference for the specified column
+#     df_copy[f'{column}_diff'] = df_copy[column].diff().fillna(0)  # Fill NaN with 0 for the diff calculation
+    
+#     # Calculate the z-score for the specified column
+#     df_copy[f'{column}_zscore'] = np.abs(zscore(df_copy[f'{column}_diff']).fillna(0))  # Filling NaN with 0 for z-score calculation
+    
+#     outliers = []
+#     outlier_streak = False  # Track if we are in an outlier streak
+    
+#     for i in range(len(df_copy)):
+#         if i == 0:
+#             outliers.append(False)
+#             continue
+        
+#         if df_copy[f'{column}_zscore'].iloc[i] > z_threshold:
+#             outliers.append(True)
+#             outlier_streak = True  # Mark the start of an outlier streak
+#         elif outlier_streak:
+#             outliers.append(True)  # Continue the outlier streak
+#             if df_copy[f'{column}_diff'].iloc[i] == 0:
+#                 outlier_streak = False  # End the outlier streak if difference is 0
+#         else:
+#             outliers.append(False)
+    
+#     # Replace outliers with NaNs in the original column
+#     df_copy.loc[outliers, column] = np.nan
+    
+#     # Optionally, drop the helper columns if they are no longer needed
+#     df_copy.drop(columns=[f'{column}_diff', f'{column}_zscore'], inplace=True)
+    
+#     return df_copy
+
+# def apply_outliers_to_flights(df, column, z_threshold):
+#     import warnings
+#     warnings.filterwarnings("ignore", category=DeprecationWarning)
+    
+#     df_copy = df.copy()
+#     # Group by 'Flight' and apply the mark_outliers function to each group
+#     df_copy = df.groupby('Flight').apply(lambda group: mark_outliers(group.copy(), column, z_threshold))
+    
+#     # Reset index if needed, because groupby may alter it
+#     df_copy.reset_index(drop=True, level=0, inplace=True)
+    
+#     return df_copy
+
+
+def process_data_and_select_features(df):
+    
+    features = ['Flight','ID',
+                'VALUE_FOB','VALUE_FOB_EXPECTED','VALUE_FOB_DIFF',
+                'FUEL_USED_1','FUEL_USED_2','FUEL_USED_3','FUEL_USED_4','TOTAL_FUEL_USED','FUEL_LOADED_FOB',
+                # 'VALUE_FUEL_QTY_CC1', 'VALUE_FUEL_QTY_CC2', 'VALUE_FUEL_QTY_CC3', 'VALUE_FUEL_QTY_CC4', 
+                'VALUE_FUEL_QTY_CT', 'VALUE_FUEL_QTY_FT1',
+                'VALUE_FUEL_QTY_FT2', 'VALUE_FUEL_QTY_FT3', 'VALUE_FUEL_QTY_FT4',
+                'VALUE_FUEL_QTY_LXT', 'VALUE_FUEL_QTY_RXT']
+    df['UTC_TIME'] = pd.to_datetime(df['UTC_TIME'])
+    df.set_index('UTC_TIME',inplace=True)
+    df.sort_index(inplace=True)
+    ##########################################
+    df = phase8(df) # order matters
+    df = longer_than_1_hour(df)
+    # df = remove_flights(df)
+    # df = remove_outliers(df)
+
+    df['FUEL_USED_1'] = df.groupby('Flight')['FUEL_USED_1'].apply(interpolate_group).values
+    df['FUEL_USED_2'] = df.groupby('Flight')['FUEL_USED_2'].apply(interpolate_group).values
+    df['FUEL_USED_3'] = df.groupby('Flight')['FUEL_USED_3'].apply(interpolate_group).values
+    df['FUEL_USED_4'] = df.groupby('Flight')['FUEL_USED_4'].apply(interpolate_group).values
+
+    df['VALUE_FOB'] = df.groupby('Flight')['VALUE_FOB'].apply(interpolate_group).values
+    df = additional_features(df)
+    df = apply_outliers_to_flights(df, 'VALUE_FOB', 3)
+    df = apply_outliers_to_flights(df, 'TOTAL_FUEL_USED', 3)
+    df['VALUE_FOB'] = df.groupby('Flight')['VALUE_FOB'].apply(interpolate_group).values
+    df['TOTAL_FUEL_USED'] = df.groupby('Flight')['TOTAL_FUEL_USED'].apply(interpolate_group).values
+    # Calculate this again after interpolation
+    df['VALUE_FOB_DIFF'] = df['VALUE_FOB_DIFF'] = df['VALUE_FOB_EXPECTED'] -  df['VALUE_FOB']
+    # df = df.dropna(subset=['VALUE_FOB', 'TOTAL_FUEL_USED'])
+    
+    # Drop na's (that we couldn't impute) and select features
+    df = df.dropna()
+    df = df[features]
+    return df
