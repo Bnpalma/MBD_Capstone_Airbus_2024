@@ -473,3 +473,19 @@ def process_data_and_select_features(df):
     df = df.dropna()
     df = df[features]
     return df
+
+
+
+def implant_leak(df, leak_flow):
+    import numpy as np
+    # LEAK_FLOW: flow rate of the leak in kg/s
+    # Implant a leak in the fuel system
+    acum = 0
+    for idx in df.index[1:]:  # Skip the first row by slicing the index
+        acum += leak_flow + np.random.normal(0, 0.1)
+        df.at[idx, 'VALUE_FOB'] -= acum
+        if df.at[idx, 'VALUE_FOB'] < 0:
+            df.at[idx, 'VALUE_FOB'] = 0
+    # recalculate diff
+    df['VALUE_FOB_DIFF'] = df['VALUE_FOB_EXPECTED'] -  df['VALUE_FOB']
+    return df
