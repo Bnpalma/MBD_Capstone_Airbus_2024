@@ -323,13 +323,13 @@ def plot_flights(df, random=False, flight=None):
     
 #     return interpolated_df
 
-
+# Function to interpolate missing values inside a group
 def interpolate_group(group):
     # Interpolate only inside the group
     return group.interpolate(method='time', limit_area='inside')
 
 
-
+# Function to mark outliers in a DataFrame using the z-score and a threshold
 def mark_outliers(df, column, z_threshold):
     # Create copies of the DataFrame columns to avoid modifying the original DataFrame
     df_copy = df.copy()
@@ -370,7 +370,7 @@ def mark_outliers(df, column, z_threshold):
     
     return df_copy
 
-
+# function to apply the mark_outliers function to each group in a DataFrame
 def apply_outliers_to_flights(df, column, z_threshold):
     import warnings
     warnings.filterwarnings("ignore", category=DeprecationWarning) 
@@ -435,7 +435,7 @@ def apply_outliers_to_flights(df, column, z_threshold):
     
 #     return df_copy
 
-
+# Function to process the data and select features
 def process_data_and_select_features(df):
     
     features = ['Flight','ID',
@@ -475,7 +475,7 @@ def process_data_and_select_features(df):
     return df
 
 
-
+# Function to implant a leak in the fuel system
 def implant_leak(df, leak_flow):
     import numpy as np
     # LEAK_FLOW: flow rate of the leak in kg/s
