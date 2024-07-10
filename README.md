@@ -8,7 +8,7 @@ Fuel leaks in aircraft can pose significant safety risks and lead to substantial
 
 ## Repository Contents
 
-- `script_EDA.py`: This script contains the code for the Exploratory Data Analysis (EDA) of the dataset, including data cleaning, preprocessing, and initial insights.
+- `script_EDA.py`: This script contains the code for the Exploratory Data Analysis (EDA) of the dataset as functions.
 - `LSTM Autoencoders.ipynb`: This Jupyter Notebook details the implementation of LSTM autoencoders for anomaly detection in the flight data.
 - `EDA and Processing.ipynb`: This notebook includes the comprehensive EDA and data processing steps, including feature engineering and outlier handling.
 - `XGBoost.ipynb`: This notebook contains the implementation of the XGBoost model used for supervised learning and leak detection.
@@ -41,11 +41,7 @@ Fuel leaks in aircraft can pose significant safety risks and lead to substantial
 
 - **Enhanced Computational Power**: Utilize more powerful hardware for model training.
 - **Integration of Additional Data Sources**: Incorporate real-time weather, flight paths, and maintenance logs.
-- **Refinement of Feature Engineering**: Explore more advanced feature engineering techniques.
-- **Model Ensemble Techniques**: Combine multiple models to improve performance.
 - **Real-time Implementation and Testing**: Deploy and test models in real-time operational environments.
-- **User-friendly Dashboard and Visualization**: Develop an intuitive monitoring dashboard for airline operators.
-- **Continuous Model Update and Learning**: Implement continuous learning mechanisms for the models.
 - **Reduction of False Positives**: Focus on reducing the rate of false positives to minimize operational disruptions.
 
 ## How to Use
